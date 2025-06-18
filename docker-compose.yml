@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    restart: always
+    ports:
+      - "6379:6379"
+
+  app:
+    build: .
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      # docker compose 네트워크 이름을 사용!
+      DATABASE_URI: postgresql://myuser:mypassword@db:5432/mydb
+      REDIS_URI: redis://redis:6379/0
+      # LangSmith 설정 추가
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      LANGSMITH_ENDPOINT: https://api.smith.langchain.com
+      # 트레이싱 활성화
+      LANGCHAIN_TRACING: true
+    ports:
+      - "8000:8000"
+    command: ["uv", "run", "langgraph", "dev"]
+
+volumes:
+  db_data:
